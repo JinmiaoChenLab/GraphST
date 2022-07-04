@@ -53,7 +53,7 @@ def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, refine
     new_type = refine_label(adata, radius, key='label_reg')
     adata.obs['label_reg_refined'] = new_type
     
-    # Silhouette
+    # Calculate Silhouette score
     SIL = metrics.silhouette_score(adata.obsm['emb_pca'], adata.obs['label'], metric='euclidean')
     SIL_reg = metrics.silhouette_score(adata.obsm['emb_reg_pca'], adata.obs['label_reg'], metric='euclidean')
     
