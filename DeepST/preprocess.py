@@ -64,7 +64,6 @@ def construct_interaction(adata, n_neighbors=3):
     """Constructing spot-to-spot interactive graph"""
     position = adata.obsm['spatial']
     # calculate distance matrix
-    #distance_matrix = pickle.load(open('/home/yahui/anaconda3/work/CellCluster_DEC/data/' + str(dataset) + '/distance/distance.pkl','rb'))
     distance_matrix = calculate_distance(position)
     n_spot = distance_matrix.shape[0]
     
