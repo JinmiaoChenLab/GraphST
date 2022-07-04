@@ -94,7 +94,7 @@ def refine_label(adata, radius=50, key='label'):
     
     return new_type
 
-def extract_top_value(map_matrix, percent = 0.1): # 0.05
+def extract_top_value(map_matrix, percent = 0.1): # 0.1
     """
     map_matrix: projection matrix with m cells and n spots.
     """
