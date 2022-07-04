@@ -35,7 +35,6 @@ adata = adata[~pd.isnull(adata.obs['ground_truth'])]
         
 # calculate ARI
 ARI = metrics.adjusted_rand_score(adata.obs['domain'], adata.obs['ground_truth'])
-#ARI_refined = metrics.adjusted_rand_score(adata.obs['domain_refined'], adata.obs['ground_truth'])
 adata.uns['ARI'] = ARI
     
 print('Dataset:', dataset)
