@@ -3,6 +3,9 @@ from DeepST import Train
 from preprocess import preprocess, get_feature, construct_interaction, add_contrastive_label, fix_seed, filter_with_overlap_gene
 from utils import project_cell_to_spot
 
+#device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = 'cpu'
+
 dataset = 'Human_Breast_Cancer'
 random_seed = 50 
 fix_seed(random_seed)
@@ -37,7 +40,7 @@ print('adata:', adata)
 print('adata_sc:', adata_sc)
 
 # Train model
-model = Train(adata, adata_sc, epochs=1200, deconvolution=True)
+model = Train(adata, adata_sc, epochs=1200, deconvolution=True, device=device)
 adata, adata_sc = model.train_map()
 
 # Project cells into spatial space
