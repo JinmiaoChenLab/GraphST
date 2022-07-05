@@ -8,4 +8,4 @@ torch==1.8.0
 matplotlib==3.4.2
 scanpy==1.9.1
 anndata==0.8.0
-
+rpy2==3.4.1
