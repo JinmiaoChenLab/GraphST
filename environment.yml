@@ -1,4 +1,4 @@
-name: long
+name: DeepST
 channels:
   - pytorch
   - conda-forge
@@ -179,4 +179,3 @@ dependencies:
     - umap-learn==0.5.3
     - webencodings==0.5.1
     - widgetsnbextension==3.6.0
-prefix: /home/yahui/anaconda3/envs/long
