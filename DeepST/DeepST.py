@@ -1,12 +1,11 @@
 import torch
-from preprocess import preprocess_adj, preprocess, construct_interaction, add_contrastive_label, get_feature
+from .preprocess import preprocess_adj, preprocess, construct_interaction, add_contrastive_label, get_feature, permutation, fix_seed
 import time
 import random
 import numpy as np
-from model import Encoder, Encoder_map, Encoder_sc
+from .model import Encoder, Encoder_map, Encoder_sc
 from progress.bar import Bar
 from torch import nn
-from preprocess import permutation, fix_seed
 import torch.nn.functional as F
 from scipy.sparse.csc import csc_matrix
 from scipy.sparse.csr import csr_matrix
