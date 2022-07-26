@@ -20,4 +20,5 @@ You'll need to install the following packages in order to run the codes.
 * matplotlib==3.4.2
 
 ## Tutorial
-For the step-by-step tutorial, please refer to:[https://deepst-tutorials.readthedocs.io/en/latest/](https://deepst-tutorials.readthedocs.io/en/latest/)
+For the step-by-step tutorial, please refer to:
+[https://deepst-tutorials.readthedocs.io/en/latest/](https://deepst-tutorials.readthedocs.io/en/latest/)
