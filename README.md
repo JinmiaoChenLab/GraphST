@@ -22,3 +22,6 @@ You'll need to install the following packages in order to run the codes.
 ## Tutorial
 For the step-by-step tutorial, please refer to:
 [https://deepst-tutorials.readthedocs.io/en/latest/](https://deepst-tutorials.readthedocs.io/en/latest/)
+
+## Citation
+XXX et al. (2022). DeepST: A versatile graph contrastive learning framework for spatially informed clustering, integration and deconvolution of spatial transcriptomics. XXX. 
