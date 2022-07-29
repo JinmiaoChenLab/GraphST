@@ -1,5 +1,7 @@
 # DeepST: A versatile graph contrastive learning framework for spatially informed clustering, integration and deconvolution of spatial transcriptomics
 
+[![DOI](https://zenodo.org/badge/494373596.svg)](https://zenodo.org/badge/latestdoi/494373596)
+
 ![](https://github.com/JinmiaoChenLab/DeepST/blob/main/DeepST.jpg)
 
 ## Overview
