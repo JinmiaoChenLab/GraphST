@@ -21,6 +21,7 @@ You'll need to install the following packages in order to run the codes.
 * scikit-learn==1.1.1
 * tqdm==4.64.0
 * matplotlib==3.4.2
+* R>=4.0.3
 
 ## Tutorial
 For the step-by-step tutorial, please refer to:
