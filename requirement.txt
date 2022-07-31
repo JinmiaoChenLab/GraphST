@@ -5,7 +5,9 @@ scipy>=1.8.1
 scikit-learn>=1.1.1
 tqdm==4.64.0
 torch>=1.8.0
+cudnn>=10.2
 matplotlib>=3.4.2
 scanpy>=1.9.1
 anndata>=0.8.0
 rpy2>=3.4.1
+R>=4.0.3
