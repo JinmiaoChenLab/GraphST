@@ -11,6 +11,7 @@ DeepST is a versatile graph contrastive self-supervised learning model that inco
 You'll need to install the following packages in order to run the codes.
 * python>=3.8
 * torch>=1.8.0
+* cudnn>=10.2
 * numpy>=1.22.3
 * scanpy>=1.9.1
 * anndata==0.8.0
