@@ -1,14 +1,8 @@
-from sklearn.decomposition import PCA
-import pandas as pd
-import seaborn as sns
-import os
 import numpy as np
+import pandas as pd
 from sklearn import metrics
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import scanpy as sc
+from sklearn.decomposition import PCA
 
-#os.environ['R_HOME'] = '/scbio4/tools/R/R-4.0.3_openblas/R-4.0.3'
 
 def mclust_R(adata, num_cluster, modelNames='EEE', used_obsm='emb_pca', random_seed=2020):
     """\
@@ -34,39 +28,76 @@ def mclust_R(adata, num_cluster, modelNames='EEE', used_obsm='emb_pca', random_s
     adata.obs['mclust'] = adata.obs['mclust'].astype('category')
     return adata
 
-def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, refinement=True):
+def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, data_type='10X', refinement=True):
+    """\
+    Spatial clustering based the learned representation.
+
+    Parameters
+    ----------
+    adata : anndata
+        AnnData object of scanpy package.
+    n_clusters : int, optional
+        The number of clusters. The default is 7.
+    radius : int, optional
+        The number of neighbors considered during refinement. The default is 50.
+    key : string, optional
+        The key of the learned representation in adata.obsm. The default is 'emb'.
+    threshold : float, optional
+        Cutoff for selecting the final labels. For 10X Visium data, the model is trained twice,
+        i.e., with and without penalty terms. As a result,  two clustering label results corresponding to the
+        two-time training are generated. The final clustering label is determined by Silhouette score. 
+        The default is 0.06.
+    data_type : string, optional
+        Data type of input spatial data. The current version of DeepST can be applied to different ST data,
+        including 10X Visium, Stereo-seq, and Slide-seqV2.
+    refinement : bool, optional
+        Refine the predicted labels or not. The default is True.
+
+    Returns
+    -------
+    None.
+
+    """
+    
     pca = PCA(n_components=20, random_state=42) 
     
-    # clustering 1
-    embedding = pca.fit_transform(adata.obsm['emb'].copy())
-    adata.obsm['emb_pca'] = embedding
-    adata = mclust_R(adata, used_obsm='emb_pca', num_cluster=n_clusters)
-    adata.obs['label'] = adata.obs['mclust']
-    new_type = refine_label(adata, radius, key='label')
-    adata.obs['label_refined'] = new_type
+    if data_type == '10X':
+       # clustering 1
+       embedding = pca.fit_transform(adata.obsm['emb'].copy())
+       adata.obsm['emb_pca'] = embedding
+       adata = mclust_R(adata, used_obsm='emb_pca', num_cluster=n_clusters)
+       adata.obs['label'] = adata.obs['mclust']
+       new_type = refine_label(adata, radius, key='label')
+       adata.obs['label_refined'] = new_type
     
-    # clustering 2
-    embedding = pca.fit_transform(adata.obsm['emb_reg'].copy())
-    adata.obsm['emb_reg_pca'] = embedding
-    adata = mclust_R(adata, used_obsm='emb_reg_pca', num_cluster=n_clusters)
-    adata.obs['label_reg'] = adata.obs['mclust']
-    new_type = refine_label(adata, radius, key='label_reg')
-    adata.obs['label_reg_refined'] = new_type
+       # clustering 2
+       embedding = pca.fit_transform(adata.obsm['emb_reg'].copy())
+       adata.obsm['emb_reg_pca'] = embedding
+       adata = mclust_R(adata, used_obsm='emb_reg_pca', num_cluster=n_clusters)
+       adata.obs['label_reg'] = adata.obs['mclust']
+       new_type = refine_label(adata, radius, key='label_reg')
+       adata.obs['label_reg_refined'] = new_type
     
-    # Silhouette
-    SIL = metrics.silhouette_score(adata.obsm['emb_pca'], adata.obs['label'], metric='euclidean')
-    SIL_reg = metrics.silhouette_score(adata.obsm['emb_reg_pca'], adata.obs['label_reg'], metric='euclidean')
+       # Silhouette
+       SIL = metrics.silhouette_score(adata.obsm['emb_pca'], adata.obs['label'], metric='euclidean')
+       SIL_reg = metrics.silhouette_score(adata.obsm['emb_reg_pca'], adata.obs['label_reg'], metric='euclidean')
     
-    if abs(SIL-SIL_reg) > threshold and SIL_reg > SIL:
-       if refinement: 
-          adata.obs['domain'] = adata.obs['label_reg_refined']
-       else:   
-          adata.obs['domain'] = adata.obs['label_reg']
-    else:
-       if refinement: 
-          adata.obs['domain'] = adata.obs['label_refined']
+       if abs(SIL-SIL_reg) > threshold and SIL_reg > SIL:
+          if refinement: 
+             adata.obs['domain'] = adata.obs['label_reg_refined']
+          else:   
+             adata.obs['domain'] = adata.obs['label_reg']
        else:
-          adata.obs['domain'] = adata.obs['label'] 
+          if refinement: 
+             adata.obs['domain'] = adata.obs['label_refined']
+          else:
+             adata.obs['domain'] = adata.obs['label']
+             
+    elif data_type in ['Stereo', 'SlideV2']:
+         embedding = pca.fit_transform(adata.obsm['emb'].copy())
+         adata.obsm['emb_pca'] = embedding
+         adata = mclust_R(adata, used_obsm='emb_pca', num_cluster=n_clusters)
+         adata.obs['label'] = adata.obs['mclust'] 
        
 def refine_label(adata, radius=50, key='label'):
     n_neigh = radius
@@ -94,11 +125,25 @@ def refine_label(adata, radius=50, key='label'):
     
     return new_type
 
-def extract_top_value(map_matrix, percent = 0.1): # 0.05
-    """
-    map_matrix: projection matrix with m cells and n spots.
-    """
-    #retain top 5% values for each cell
+def extract_top_value(map_matrix, percent = 0.1): 
+    '''\
+    Filter out cells with low mapping probability
+
+    Parameters
+    ----------
+    map_matrix : array
+        Mapped matrix with m spots and n cells.
+    percent : float, optional
+        The percentage of cells to retain. The default is 0.1.
+
+    Returns
+    -------
+    output : array
+        Filtered mapped matrix.
+
+    '''
+
+    #retain top 1% values for each spot
     top_k  = percent * map_matrix.shape[1]
     output = map_matrix * (np.argsort(np.argsort(map_matrix)) >= map_matrix.shape[1] - top_k)
     
@@ -118,8 +163,22 @@ def construct_cell_type_matrix(adata_sc):
     #res = mat.sum()
     return mat
 
-def project_cell_to_spot(adata, adata_sc, celltype):
-    plt.rcParams['font.sans-serif'] = ['Times New Roman']
+def project_cell_to_spot(adata, adata_sc):
+    '''
+    Project cell types onto ST data using mapped matrix in adata.obsm
+
+    Parameters
+    ----------
+    adata : anndata
+        AnnData object of spatial data.
+    adata_sc : anndata
+        AnnData object of scRNA-seq reference data.
+
+    Returns
+    -------
+    None.
+
+    '''
     
     # read map matrix 
     map_matrix = adata.obsm['map_matrix']   # spot x cell
@@ -146,23 +205,3 @@ def project_cell_to_spot(adata, adata_sc, celltype):
 
     #add projection results to adata
     adata.obs[df_projection.columns] = df_projection
-    print('adata:', adata)
-    
-    cell_type = celltype 
-    
-    with mpl.rc_context({'axes.facecolor':  'black',
-                     'figure.figsize': [4.5, 5]}):
-            
-         sc.pl.spatial(adata, cmap='magma',
-                  color = cell_type,
-                  #color = ['adjacent normal', 'solid tumor'],
-                  ncols=5, size=1.0,
-                  wspace = 0.1, hspace = 0.2,
-                  #wspace = 0.3,
-                  img_key='hires',
-                  # limit color scale at 99.2% quantile of cell abundance
-                  vmin=0, vmax='p99.2',
-                  show=True
-                 )
-
-          
