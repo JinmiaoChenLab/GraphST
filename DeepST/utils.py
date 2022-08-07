@@ -125,7 +125,7 @@ def refine_label(adata, radius=50, key='label'):
     
     return new_type
 
-def extract_top_value(map_matrix, percent = 0.1): 
+def extract_top_value(map_matrix, retain_percent = 0.1): 
     '''\
     Filter out cells with low mapping probability
 
@@ -133,7 +133,7 @@ def extract_top_value(map_matrix, percent = 0.1):
     ----------
     map_matrix : array
         Mapped matrix with m spots and n cells.
-    percent : float, optional
+    retain_percent : float, optional
         The percentage of cells to retain. The default is 0.1.
 
     Returns
@@ -144,7 +144,7 @@ def extract_top_value(map_matrix, percent = 0.1):
     '''
 
     #retain top 1% values for each spot
-    top_k  = percent * map_matrix.shape[1]
+    top_k  = retain_percent * map_matrix.shape[1]
     output = map_matrix * (np.argsort(np.argsort(map_matrix)) >= map_matrix.shape[1] - top_k)
     
     return output 
@@ -163,8 +163,8 @@ def construct_cell_type_matrix(adata_sc):
     #res = mat.sum()
     return mat
 
-def project_cell_to_spot(adata, adata_sc):
-    '''
+def project_cell_to_spot(adata, adata_sc, retain_percent=0.1):
+    '''\
     Project cell types onto ST data using mapped matrix in adata.obsm
 
     Parameters
@@ -173,7 +173,8 @@ def project_cell_to_spot(adata, adata_sc):
         AnnData object of spatial data.
     adata_sc : anndata
         AnnData object of scRNA-seq reference data.
-
+    retrain_percent: float    
+        The percentage of cells to retain. The default is 0.1.
     Returns
     -------
     None.
