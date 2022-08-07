@@ -69,6 +69,55 @@ class Train():
             add_regularization = False,
             deconvolution = False
             ):
+        '''\
+
+        Parameters
+        ----------
+        adata : anndata
+            AnnData object of spatial data.
+        adata_sc : anndata, optional
+            AnnData object of scRNA-seq data. adata_sc is needed for deconvolution. The default is None.
+        device : string, optional
+            Using GPU or CPU? The default is 'cuda:0'.
+        learning_rate : float, optional
+            Learning rate for ST representation learning. The default is 0.001.
+        learning_rate_sc : float, optional
+            Learning rate for scRNA representation learning. The default is 0.01.
+        weight_decay : float, optional
+            Weight factor to control the influence of weight parameters. The default is 0.00.
+        epochs : int, optional
+            Epoch for model training. The default is 600.
+        dim_input : int, optional
+            Dimension of input feature. The default is 3000.
+        dim_output : int, optional
+            Dimension of output representation. The default is 64.
+        random_seed : int, optional
+            Random seed to fix model initialization. The default is 50.
+        alpha : float, optional
+            Weight factor to control the influence of reconstruction loss in representation learning. 
+            The default is 10.
+        beta : float, optional
+            Weight factor to control the influence of contrastive loss in representation learning. 
+            The default is 1.
+        theta : float, optional
+            Weight factor to control the influence of penalty term in representation learning. 
+            The default is 0.1.
+        lamda1 : float, optional
+            Weight factor to control the influence of reconstruction loss in mapping matrix learning. 
+            The default is 10.
+        lamda2 : float, optional
+            Weight factor to control the influence of contrastive loss in mapping matrix learning. 
+            The default is 1.
+        add_regularization : bool, optional
+            Add penalty term in representation learning?. The default is False.
+        deconvolution : bool, optional
+            Deconvolution task? The default is False.
+
+        Returns
+        -------
+        The learned representation 'self.emb_rec'.
+
+        '''
         self.adata = adata.copy()
         self.device = device
         self.learning_rate=learning_rate
@@ -234,6 +283,21 @@ class Train():
             return self.adata, self.adata_sc
     
     def loss(self, emb_sp, emb_sc):
+        '''\
+        Calculate loss
+
+        Parameters
+        ----------
+        emb_sp : torch tensor
+            Spatial spot representation matrix.
+        emb_sc : torch tensor
+            scRNA cell representation matrix.
+
+        Returns
+        -------
+        Loss values.
+
+        '''
         # cell-to-spot
         map_probs = F.softmax(self.map_matrix, dim=1)   # dim=0: normalization by cell
         self.pred_sp = torch.matmul(map_probs.t(), emb_sc)
@@ -244,9 +308,23 @@ class Train():
         return loss_recon, loss_NCE
         
     def Noise_Cross_Entropy(self, pred_sp, emb_sp):
+        '''\
+        Calculate noise cross entropy. Considering spatial neighbors as positive pairs for each spot
+            
+        Parameters
+        ----------
+        pred_sp : torch tensor
+            Predicted spatial gene expression matrix.
+        emb_sp : torch tensor
+            Reconstructed spatial gene expression matrix.
+
+        Returns
+        -------
+        loss : float
+            Loss value.
+
         '''
-        Considering spatial neighbors as positive pairs for each spot
-        '''
+        
         mat = self.cosine_similarity(pred_sp, emb_sp) 
         k = torch.exp(mat).sum(axis=1) - torch.exp(torch.diag(mat, 0))
         
@@ -259,7 +337,11 @@ class Train():
         
         return loss
     
-    def cosine_similarity(self, pred_sp, emb_sp):  #pres_sp: spot x gene; emb_sp: spot x gene    
+    def cosine_similarity(self, pred_sp, emb_sp):  #pres_sp: spot x gene; emb_sp: spot x gene
+        '''\
+        Calculate cosine similarity based on predicted and reconstructed gene expression matrix.    
+        '''
+        
         M = torch.matmul(pred_sp, emb_sp.T)
         Norm_c = torch.norm(pred_sp, p=2, dim=1)
         Norm_s = torch.norm(emb_sp, p=2, dim=1)
