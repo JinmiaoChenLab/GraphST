@@ -1,14 +1,14 @@
-import numpy as np
-import scanpy as sc
-import scipy.sparse as sp
 import os
 import torch
 import random
+import numpy as np
+import scanpy as sc
+import scipy.sparse as sp
 from torch.backends import cudnn
-import pickle
 #from scipy.sparse import issparse
 from scipy.sparse.csc import csc_matrix
 from scipy.sparse.csr import csr_matrix
+from sklearn.neighbors import NearestNeighbors 
 
 def filter_with_overlap_gene(adata, adata_sc):
     # remove all-zero-valued genes
@@ -86,6 +86,19 @@ def construct_interaction(adata, n_neighbors=3):
     adj = np.where(adj>1, 1, adj)
     
     adata.obsm['adj'] = adj
+    
+def construct_cell_interaction_KNN(adata, n_neighbors=3):
+    print('Using KNN algorithm to construct graph')
+    position = adata.obsm['spatial']
+    n_spot = position.shape[0]
+    nbrs = NearestNeighbors(n_neighbors=n_neighbors+1).fit(position)  
+    _ , indices = nbrs.kneighbors(position)
+    x = indices[:, 0].repeat(n_neighbors)
+    y = indices[:, 1:].flatten()
+    cell_interaction = np.zeros([n_spot, n_spot])
+    cell_interaction[x, y] = 1
+    print('graph build!')
+    return cell_interaction    
 
 def preprocess(adata):
     sc.pp.highly_variable_genes(adata, flavor="seurat_v3", n_top_genes=3000)
@@ -145,5 +158,3 @@ def fix_seed(seed):
     
     os.environ['PYTHONHASHSEED'] = str(seed)
     os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8' 
-    
-    
