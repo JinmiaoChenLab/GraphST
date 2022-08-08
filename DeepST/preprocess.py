@@ -97,7 +97,7 @@ def construct_cell_interaction_KNN(adata, n_neighbors=3):
     y = indices[:, 1:].flatten()
     cell_interaction = np.zeros([n_spot, n_spot])
     cell_interaction[x, y] = 1
-    print('graph build!')
+    print('Graph constructed!')
     return cell_interaction    
 
 def preprocess(adata):
