@@ -88,7 +88,6 @@ def construct_interaction(adata, n_neighbors=3):
     adata.obsm['adj'] = adj
     
 def construct_cell_interaction_KNN(adata, n_neighbors=3):
-    print('Using KNN algorithm to construct graph')
     position = adata.obsm['spatial']
     n_spot = position.shape[0]
     nbrs = NearestNeighbors(n_neighbors=n_neighbors+1).fit(position)  
