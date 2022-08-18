@@ -63,7 +63,7 @@ def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, data_t
     
     pca = PCA(n_components=20, random_state=42) 
     
-    if data_type == '10X':
+    if data_type == '10X' and sample=='single':
        # clustering 1
        embedding = pca.fit_transform(adata.obsm['emb'].copy())
        adata.obsm['emb_pca'] = embedding
