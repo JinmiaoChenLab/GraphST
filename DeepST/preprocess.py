@@ -45,20 +45,30 @@ def permutation(feature):
     feature_permutated = feature[ids]
     
     return feature_permutated
+ 
 
-def calculate_distance(position):
-    n_spot = position.shape[0]
-    distance_matrix = np.zeros([n_spot, n_spot])
+def calculate_distance(x):
+    """Compute pairwise Euclidean distances.
+    """
+    assert isinstance(x, np.ndarray) and x.ndim == 2
 
-    for i in range(n_spot):
-        x = position[i, :]
-        for j in range(i+1, n_spot):
-            y = position[j, :]
-            d = np.sqrt(np.sum(np.square(x-y)))
-            distance_matrix[i, j] = d
-            distance_matrix[j, i] = d
-            
-    return distance_matrix 
+    x_square = np.expand_dims(np.einsum('ij,ij->i', x, x), axis=1)
+    y_square = x_square.T
+    
+    distances = np.dot(x, x.T)
+    distances *= -2
+    distances += x_square
+    distances += y_square
+    
+    # Ensure all values are larger than 0
+    np.maximum(distances, 0, distances)
+    
+    # Ensure that self-distance is set to 0.0 
+    distances.flat[::distances.shape[0] + 1] = 0.0
+    
+    np.sqrt(distances, distances)
+    
+    return distances 
 
 def construct_interaction(adata, n_neighbors=3):
     """Constructing spot-to-spot interactive graph"""
@@ -88,6 +98,7 @@ def construct_interaction(adata, n_neighbors=3):
     adata.obsm['adj'] = adj
     
 def construct_cell_interaction_KNN(adata, n_neighbors=3):
+    print('Using KNN algorithm to construct graph')
     position = adata.obsm['spatial']
     n_spot = position.shape[0]
     nbrs = NearestNeighbors(n_neighbors=n_neighbors+1).fit(position)  
