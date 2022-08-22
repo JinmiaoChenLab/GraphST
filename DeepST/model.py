@@ -79,7 +79,6 @@ class Encoder(Module):
         
         emb = self.act(z)
         
-        #adversial learning
         z_a = F.dropout(feat_a, self.dropout, self.training)
         z_a = torch.mm(z_a, self.weight1)
         z_a = torch.mm(adj, z_a)
@@ -94,7 +93,60 @@ class Encoder(Module):
         ret = self.disc(g, emb, emb_a)  
         ret_a = self.disc(g_a, emb_a, emb) 
         
-        return hiden_emb, h, ret, ret_a 
+        return hiden_emb, h, ret, ret_a
+    
+class Encoder_sparse(Module):
+    """
+    Sparse version of Encoder
+    """
+    def __init__(self, in_features, out_features, graph_neigh, dropout=0.0, act=F.relu):
+        super(Encoder_sparse, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.graph_neigh = graph_neigh
+        self.dropout = dropout
+        self.act = act
+        
+        self.weight1 = Parameter(torch.FloatTensor(self.in_features, self.out_features))
+        self.weight2 = Parameter(torch.FloatTensor(self.out_features, self.in_features))
+        self.reset_parameters()
+        
+        self.disc = Discriminator(self.out_features)
+
+        self.sigm = nn.Sigmoid()
+        self.read = AvgReadout()
+        
+    def reset_parameters(self):
+        torch.nn.init.xavier_uniform_(self.weight1)
+        torch.nn.init.xavier_uniform_(self.weight2)
+
+    def forward(self, feat, feat_a, adj):
+        z = F.dropout(feat, self.dropout, self.training)
+        z = torch.mm(z, self.weight1)
+        z = torch.spmm(adj, z)
+        
+        hiden_emb = z
+        
+        h = torch.mm(z, self.weight2)
+        h = torch.spmm(adj, h)
+        
+        emb = self.act(z)
+        
+        z_a = F.droput(feat_a, self.dropout, self.training)
+        z_a = torch.mm(z_a, self.weight1)
+        z_a = torch.spmm(adj, z_a)
+        emb_a = self.act(z_a)
+         
+        g = self.read(emb, self.graph_neigh)
+        g = self.sigm(g)
+        
+        g_a = self.read(emb_a, self.graph_neigh)
+        g_a =self.sigm(g_a)       
+       
+        ret = self.disc(g, emb, emb_a)  
+        ret_a = self.disc(g_a, emb_a, emb)
+        
+        return hiden_emb, h, ret, ret_a     
 
 class Encoder_sc(torch.nn.Module):
     def __init__(self, dim_input, dim_output, dropout=0.0, act=F.relu):
@@ -167,12 +219,4 @@ class Encoder_map(torch.nn.Module):
         x = self.M
         
         return x 
-   
-    
-   
-    
-
-    
-    
-        
-       
+  
