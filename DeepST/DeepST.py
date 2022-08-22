@@ -222,8 +222,12 @@ class Train():
              self.model.eval()
              if self.deconvolution:
                 self.emb_rec = self.model(self.features, self.features_a, self.adj)[1]
-             else:   
-                self.emb_rec = self.model(self.features, self.features_a, self.adj)[1].detach().cpu().numpy()
+             else:  
+                if self.datatype in ['Stereo', 'Slide']:
+                   self.emb_rec = self.model(self.features, self.features_a, self.adj)[1]
+                   self.emb_rec = F.normalize(self.emb_rec, p=2, dim=1).detach().cpu().numpy() 
+                else:
+                   self.emb_rec = self.model(self.features, self.features_a, self.adj)[1].detach().cpu().numpy()
              
              return self.emb_rec
          
