@@ -97,18 +97,25 @@ def construct_interaction(adata, n_neighbors=3):
     
     adata.obsm['adj'] = adj
     
-def construct_cell_interaction_KNN(adata, n_neighbors=3):
-    print('Using KNN algorithm to construct graph')
+def construct_interaction_KNN(adata, n_neighbors=3):
     position = adata.obsm['spatial']
     n_spot = position.shape[0]
     nbrs = NearestNeighbors(n_neighbors=n_neighbors+1).fit(position)  
     _ , indices = nbrs.kneighbors(position)
     x = indices[:, 0].repeat(n_neighbors)
     y = indices[:, 1:].flatten()
-    cell_interaction = np.zeros([n_spot, n_spot])
-    cell_interaction[x, y] = 1
-    print('Graph constructed!')
-    return cell_interaction    
+    interaction = np.zeros([n_spot, n_spot])
+    interaction[x, y] = 1
+    
+    adata.obsm['graph_neigh'] = interaction
+    
+    #transform adj to symmetrical adj
+    adj = interaction
+    adj = adj + adj.T
+    adj = np.where(adj>1, 1, adj)
+    
+    adata.obsm['adj'] = adj
+    print('Graph constructed!')   
 
 def preprocess(adata):
     sc.pp.highly_variable_genes(adata, flavor="seurat_v3", n_top_genes=3000)
@@ -154,7 +161,23 @@ def normalize_adj(adj):
 def preprocess_adj(adj):
     """Preprocessing of adjacency matrix for simple GCN model and conversion to tuple representation."""
     adj_normalized = normalize_adj(adj)+np.eye(adj.shape[0])
-    return adj_normalized   
+    return adj_normalized 
+
+def sparse_mx_to_torch_sparse_tensor(sparse_mx):
+    """Convert a scipy sparse matrix to a torch sparse tensor."""
+    sparse_mx = sparse_mx.tocoo().astype(np.float32)
+    indices = torch.from_numpy(np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64))
+    values = torch.from_numpy(sparse_mx.data)
+    shape = torch.Size(sparse_mx.shape)
+    return torch.sparse.FloatTensor(indices, values, shape)
+
+def preprocess_adj_sparse(adj):
+    adj = sp.coo_matrix(adj)
+    adj_ = adj + sp.eye(adj.shape[0])
+    rowsum = np.array(adj_.sum(1))
+    degree_mat_inv_sqrt = sp.diags(np.power(rowsum, -0.5).flatten())
+    adj_normalized = adj_.dot(degree_mat_inv_sqrt).transpose().dot(degree_mat_inv_sqrt).tocoo()
+    return sparse_mx_to_torch_sparse_tensor(adj_normalized)    
 
 def fix_seed(seed):
     os.environ['PYTHONHASHSEED'] = str(seed)
