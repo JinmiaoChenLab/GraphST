@@ -1,9 +1,9 @@
 import torch
-from .preprocess import preprocess_adj, preprocess, construct_interaction, add_contrastive_label, get_feature, permutation, fix_seed
+from .preprocess import preprocess_adj, preprocess_adj_sparse, preprocess, construct_interaction, add_contrastive_label, get_feature, permutation, fix_seed
 import time
 import random
 import numpy as np
-from .model import Encoder, Encoder_map, Encoder_sc
+from .model import Encoder, Encoder_sparse, Encoder_map, Encoder_sc
 from tqdm import tqdm
 from torch import nn
 import torch.nn.functional as F
@@ -67,7 +67,8 @@ class Train():
             lamda1 = 10,
             lamda2 = 1,
             add_regularization = False,
-            deconvolution = False
+            deconvolution = False,
+            datatype = '10X'
             ):
         '''\
 
@@ -112,7 +113,8 @@ class Train():
             Add penalty term in representation learning?. The default is False.
         deconvolution : bool, optional
             Deconvolution task? The default is False.
-
+        datatype : string, optional    
+            Data type of input. Our model supports 10X Visium ('10X'), Stereo-seq ('Stereo'), and Slide-seq/Slide-seqV2 ('Slide') data. 
         Returns
         -------
         The learned representation 'self.emb_rec'.
@@ -131,6 +133,7 @@ class Train():
         self.lamda2 = lamda2
         self.add_regularization = add_regularization
         self.deconvolution = deconvolution
+        self.datatype = datatype
         
         self.features = torch.FloatTensor(adata.obsm['feat'].copy()).to(self.device)
         self.features_a = torch.FloatTensor(adata.obsm['feat_a'].copy()).to(self.device)
@@ -141,9 +144,14 @@ class Train():
         self.dim_input = self.features.shape[1]
         self.dim_output = dim_output
         
-        # standard version
-        self.adj = preprocess_adj(self.adj)
-        self.adj = torch.FloatTensor(self.adj).to(self.device)
+        if self.datatype in ['Stereo', 'Slide']:
+           #using sparse
+           print('Building sparse matrix ...')
+           self.adj = preprocess_adj_sparse(self.adj).to(self.device)
+        else: 
+           # standard version
+           self.adj = preprocess_adj(self.adj)
+           self.adj = torch.FloatTensor(self.adj).to(self.device)
         
         if self.deconvolution:
            self.adata_sc = adata_sc.copy() 
@@ -171,7 +179,10 @@ class Train():
            self.n_spot = adata.n_obs
             
     def train(self):
-        self.model = Encoder(self.dim_input, self.dim_output, self.graph_neigh).to(self.device)
+        if self.datatype in ['Stereo', 'Slide']:
+           self.model = Encoder_sparse(self.dim_input, self.dim_output, self.graph_neigh).to(self.device)
+        else:
+           self.model = Encoder(self.dim_input, self.dim_output, self.graph_neigh).to(self.device)
         self.loss_CSL = nn.BCEWithLogitsLoss()
     
         self.optimizer = torch.optim.Adam(self.model.parameters(), self.learning_rate, 
