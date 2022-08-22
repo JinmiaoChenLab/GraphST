@@ -132,7 +132,7 @@ class Encoder_sparse(Module):
         
         emb = self.act(z)
         
-        z_a = F.droput(feat_a, self.dropout, self.training)
+        z_a = F.dropout(feat_a, self.dropout, self.training)
         z_a = torch.mm(z_a, self.weight1)
         z_a = torch.spmm(adj, z_a)
         emb_a = self.act(z_a)
