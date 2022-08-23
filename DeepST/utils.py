@@ -28,7 +28,7 @@ def mclust_R(adata, num_cluster, modelNames='EEE', used_obsm='emb_pca', random_s
     adata.obs['mclust'] = adata.obs['mclust'].astype('category')
     return adata
 
-def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, data_type='10X', sample='single', refinement=True):
+def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, datatype='10X', sample='single', refinement=False):
     """\
     Spatial clustering based the learned representation.
 
@@ -49,7 +49,7 @@ def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, data_t
         The default is 0.06.
     data_type : string, optional
         Data type of input spatial data. The current version of DeepST can be applied to different ST data,
-        including 10X Visium, Stereo-seq, and Slide-seqV2.
+        including 10X Visium ('10X'), Stereo-seq ('Stereo'), and Slide-seq/Slide-seqV2 ('Slide').
     sample: string, optional
         The number of input ST data. 'single' means single ST sample; 'multiple' means multiple ST samples (i.e., ST data integration task)      
     refinement : bool, optional
@@ -63,7 +63,7 @@ def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, data_t
     
     pca = PCA(n_components=20, random_state=42) 
     
-    if data_type == '10X' and sample=='single':
+    if datatype == '10X' and sample=='single':
        # clustering 1
        embedding = pca.fit_transform(adata.obsm['emb'].copy())
        adata.obsm['emb_pca'] = embedding
@@ -95,7 +95,7 @@ def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, data_t
           else:
              adata.obs['domain'] = adata.obs['label']
              
-    elif data_type in ['Stereo', 'SlideV2'] or sample=='multiple':
+    elif datatype in ['Stereo', 'Slide'] or sample=='multiple':
          embedding = pca.fit_transform(adata.obsm['emb'].copy())
          adata.obsm['emb_pca'] = embedding
          adata = mclust_R(adata, used_obsm='emb_pca', num_cluster=n_clusters)
@@ -208,4 +208,3 @@ def project_cell_to_spot(adata, adata_sc, retain_percent=0.1):
 
     #add projection results to adata
     adata.obs[df_projection.columns] = df_projection
- 
