@@ -74,7 +74,7 @@ def construct_interaction(adata, n_neighbors=3):
     """Constructing spot-to-spot interactive graph"""
     position = adata.obsm['spatial']
     # calculate distance matrix
-    distance_matrix = calculate_distance(position)
+    distance_matrix = calculate_distance(position.astype(np.float64))
     n_spot = distance_matrix.shape[0]
     
     adata.obsm['distance_matrix'] = distance_matrix
