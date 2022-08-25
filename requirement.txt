@@ -1,6 +1,6 @@
 python==3.8
 numpy==1.22.3
-pandas>=1.4.2
+pandas==1.4.2
 scipy==1.8.1
 scikit-learn==1.1.1
 scikit-misc==0.1.4
