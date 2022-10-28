@@ -28,4 +28,4 @@ For the step-by-step tutorial, please refer to:
 [https://deepst-tutorials.readthedocs.io/en/latest/](https://deepst-tutorials.readthedocs.io/en/latest/)
 
 ## Citation
-Long et al. (2022). DeepST: A versatile graph contrastive learning framework for spatially informed clustering, integration and deconvolution of spatial transcriptomics. BioRxiv. 
+Long et al. (2022). DeepST: A novel graph self-supervised contrastive learning method for spatially informed clustering, integration and deconvolution of spatial transcriptomics. BioRxiv. 
