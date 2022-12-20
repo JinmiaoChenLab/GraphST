@@ -1,4 +1,5 @@
 import os
+import ot
 import torch
 import random
 import numpy as np
@@ -44,37 +45,14 @@ def permutation(feature):
     ids = np.random.permutation(ids)
     feature_permutated = feature[ids]
     
-    return feature_permutated
- 
-
-def calculate_distance(x):
-    """Compute pairwise Euclidean distances.
-    """
-    assert isinstance(x, np.ndarray) and x.ndim == 2
-
-    x_square = np.expand_dims(np.einsum('ij,ij->i', x, x), axis=1)
-    y_square = x_square.T
-    
-    distances = np.dot(x, x.T)
-    distances *= -2
-    distances += x_square
-    distances += y_square
-    
-    # Ensure all values are larger than 0
-    np.maximum(distances, 0, distances)
-    
-    # Ensure that self-distance is set to 0.0 
-    distances.flat[::distances.shape[0] + 1] = 0.0
-    
-    np.sqrt(distances, distances)
-    
-    return distances 
+    return feature_permutated 
 
 def construct_interaction(adata, n_neighbors=3):
     """Constructing spot-to-spot interactive graph"""
     position = adata.obsm['spatial']
+    
     # calculate distance matrix
-    distance_matrix = calculate_distance(position.astype(np.float64))
+    distance_matrix = ot.dist(position, position, metric='euclidean')
     n_spot = distance_matrix.shape[0]
     
     adata.obsm['distance_matrix'] = distance_matrix
@@ -191,3 +169,5 @@ def fix_seed(seed):
     
     os.environ['PYTHONHASHSEED'] = str(seed)
     os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8' 
+    
+    
