@@ -15,7 +15,7 @@ class GraphST():
     def __init__(self, 
         adata,
         adata_sc = None,
-        device='cuda:0',
+        device='cuda:3',
         learning_rate=0.001,
         learning_rate_sc = 0.01,
         weight_decay=0.00,
