@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn import metrics
+import scanpy as sc
 from sklearn.decomposition import PCA
 
 
@@ -28,7 +29,7 @@ def mclust_R(adata, num_cluster, modelNames='EEE', used_obsm='emb_pca', random_s
     adata.obs['mclust'] = adata.obs['mclust'].astype('category')
     return adata
 
-def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, datatype='10X', sample='single', refinement=False):
+def clustering(adata, n_clusters=7, radius=50, key='emb', method='mclust', start=0.1, end=3.0, increment=0.01, refinement=False):
     """\
     Spatial clustering based the learned representation.
 
@@ -42,18 +43,16 @@ def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, dataty
         The number of neighbors considered during refinement. The default is 50.
     key : string, optional
         The key of the learned representation in adata.obsm. The default is 'emb'.
-    threshold : float, optional
-        Cutoff for selecting the final labels. For 10X Visium data, the model is trained twice,
-        i.e., with and without penalty terms. As a result,  two clustering label results corresponding to the
-        two-time training are generated. The final clustering label is determined by Silhouette score. 
-        The default is 0.06.
-    data_type : string, optional
-        Data type of input spatial data. The current version of DeepST can be applied to different ST data,
-        including 10X Visium ('10X'), Stereo-seq ('Stereo'), and Slide-seq/Slide-seqV2 ('Slide').
-    sample: string, optional
-        The number of input ST data. 'single' means single ST sample; 'multiple' means multiple ST samples (i.e., ST data integration task)      
+    method : string, optional
+        The tool for clustering. Supported tools include 'mclust', 'leiden', and 'louvain'. The default is 'mclust'. 
+    start : float
+        The start value for searching. The default is 0.1.
+    end : float 
+        The end value for searching. The default is 3.0.
+    increment : float
+        The step size to increase. The default is 0.01.   
     refinement : bool, optional
-        Refine the predicted labels or not. The default is True.
+        Refine the predicted labels or not. The default is False.
 
     Returns
     -------
@@ -62,44 +61,24 @@ def clustering(adata, n_clusters=7, radius=50, key='emb', threshold=0.06, dataty
     """
     
     pca = PCA(n_components=20, random_state=42) 
+    embedding = pca.fit_transform(adata.obsm['emb'].copy())
+    adata.obsm['emb_pca'] = embedding
     
-    if datatype == '10X' and sample=='single':
-       # clustering 1
-       embedding = pca.fit_transform(adata.obsm['emb'].copy())
-       adata.obsm['emb_pca'] = embedding
+    if method == 'mclust':
        adata = mclust_R(adata, used_obsm='emb_pca', num_cluster=n_clusters)
-       adata.obs['label'] = adata.obs['mclust']
-       new_type = refine_label(adata, radius, key='label')
-       adata.obs['label_refined'] = new_type
-    
-       # clustering 2
-       embedding = pca.fit_transform(adata.obsm['emb_reg'].copy())
-       adata.obsm['emb_reg_pca'] = embedding
-       adata = mclust_R(adata, used_obsm='emb_reg_pca', num_cluster=n_clusters)
-       adata.obs['label_reg'] = adata.obs['mclust']
-       new_type = refine_label(adata, radius, key='label_reg')
-       adata.obs['label_reg_refined'] = new_type
-    
-       # Silhouette
-       SIL = metrics.silhouette_score(adata.obsm['emb_pca'], adata.obs['label'], metric='euclidean')
-       SIL_reg = metrics.silhouette_score(adata.obsm['emb_reg_pca'], adata.obs['label_reg'], metric='euclidean')
-    
-       if abs(SIL-SIL_reg) > threshold and SIL_reg > SIL:
-          if refinement: 
-             adata.obs['domain'] = adata.obs['label_reg_refined']
-          else:   
-             adata.obs['domain'] = adata.obs['label_reg']
-       else:
-          if refinement: 
-             adata.obs['domain'] = adata.obs['label_refined']
-          else:
-             adata.obs['domain'] = adata.obs['label']
-             
-    elif datatype in ['Stereo', 'Slide'] or sample=='multiple':
-         embedding = pca.fit_transform(adata.obsm['emb'].copy())
-         adata.obsm['emb_pca'] = embedding
-         adata = mclust_R(adata, used_obsm='emb_pca', num_cluster=n_clusters)
-         adata.obs['label'] = adata.obs['mclust'] 
+       adata.obs['domain'] = adata.obs['mclust']
+    elif method == 'leiden':
+       res = search_res(adata, n_clusters, use_rep='emb_pca', method=method, start=start, end=end, increment=increment)
+       sc.tl.leiden(adata, random_state=0, resolution=res)
+       adata.obs['domain'] = adata.obs['leiden']
+    elif method == 'louvain':
+       res = search_res(adata, n_clusters, use_rep='emb_pca', method=method, start=start, end=end, increment=increment)
+       sc.tl.louvain(adata, random_state=0, resolution=res)
+       adata.obs['domain'] = adata.obs['louvain'] 
+       
+    if refinement:  
+       new_type = refine_label(adata, radius, key='domain')
+       adata.obs['domain'] = new_type 
        
 def refine_label(adata, radius=50, key='label'):
     n_neigh = radius
@@ -208,3 +187,51 @@ def project_cell_to_spot(adata, adata_sc, retain_percent=0.1):
 
     #add projection results to adata
     adata.obs[df_projection.columns] = df_projection
+    
+def search_res(adata, n_clusters, method='leiden', use_rep='emb', start=0.1, end=3.0, increment=0.01):
+    '''\
+    Searching corresponding resolution according to given cluster number
+    
+    Parameters
+    ----------
+    adata : anndata
+        AnnData object of spatial data.
+    n_clusters : int
+        Targetting number of clusters.
+    method : string
+        Tool for clustering. Supported tools include 'leiden' and 'louvain'. The default is 'leiden'.    
+    use_rep : string
+        The indicated representation for clustering.
+    start : float
+        The start value for searching.
+    end : float 
+        The end value for searching.
+    increment : float
+        The step size to increase.
+        
+    Returns
+    -------
+    res : float
+        Resolution.
+        
+    '''
+    print('Searching resolution...')
+    label = 0
+    sc.pp.neighbors(adata, n_neighbors=50, use_rep=use_rep)
+    for res in sorted(list(np.arange(start, end, increment)), reverse=True):
+        if method == 'leiden':
+           sc.tl.leiden(adata, random_state=0, resolution=res)
+           count_unique = len(pd.DataFrame(adata.obs['leiden']).leiden.unique())
+           print('resolution={}, cluster number={}'.format(res, count_unique))
+        elif method == 'louvain':
+           sc.tl.louvain(adata, random_state=0, resolution=res)
+           count_unique = len(pd.DataFrame(adata.obs['louvain']).louvain.unique()) 
+           print('resolution={}, cluster number={}'.format(res, count_unique))
+        if count_unique == n_clusters:
+            label = 1
+            break
+
+    assert label==1, "Resolution is not found. Please try bigger range or smaller step!." 
+       
+    return res    
+  
