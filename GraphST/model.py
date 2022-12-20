@@ -219,4 +219,3 @@ class Encoder_map(torch.nn.Module):
         x = self.M
         
         return x 
-  
