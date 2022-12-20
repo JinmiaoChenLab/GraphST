@@ -1,9 +1,9 @@
 import torch
-from preprocess import preprocess_adj, preprocess_adj_sparse, preprocess, construct_interaction, construct_interaction_KNN, add_contrastive_label, get_feature, permutation, fix_seed
+from .preprocess import preprocess_adj, preprocess_adj_sparse, preprocess, construct_interaction, construct_interaction_KNN, add_contrastive_label, get_feature, permutation, fix_seed
 import time
 import random
 import numpy as np
-from model import Encoder, Encoder_sparse, Encoder_map, Encoder_sc
+from .model import Encoder, Encoder_sparse, Encoder_map, Encoder_sc
 from tqdm import tqdm
 from torch import nn
 import torch.nn.functional as F
