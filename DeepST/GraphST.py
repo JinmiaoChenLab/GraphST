@@ -1,5 +1,5 @@
 import torch
-from .preprocess import preprocess_adj, preprocess_adj_sparse, preprocess, construct_interaction, add_contrastive_label, get_feature, permutation, fix_seed
+from .preprocess import preprocess_adj, preprocess_adj_sparse, preprocess, construct_interaction, construct_interaction_KNN, add_contrastive_label, get_feature, permutation, fix_seed
 import time
 import random
 import numpy as np
@@ -10,66 +10,27 @@ import torch.nn.functional as F
 from scipy.sparse.csc import csc_matrix
 from scipy.sparse.csr import csr_matrix
 import pandas as pd
-
-class DeepST():
-    def __init__(self, adata, random_seed=50, add_regularization=True, device='cpu'):
-       self.adata = adata.copy()
-       self.random_seed = random_seed
-       self.add_regularization = True
-       self.device = device
-       
-       fix_seed(self.random_seed)
-       preprocess(self.adata)
-       construct_interaction(self.adata)
-       add_contrastive_label(self.adata)
-       
-       self.adata_output = self.adata.copy()
     
-    def train_DeepST(self):
-       if self.add_regularization:
-          adata = self.adata_output.copy()
-          #preprocess(adata)
-          get_feature(adata)
-          model = Train(adata, device=self.device)
-          emb = model.train()
-          self.adata_output.obsm['emb'] = emb
-          
-          fix_seed(self.random_seed)
-          adata = self.adata_output.copy()
-          #preprocess(adata)
-          get_feature(adata)
-          model = Train(adata, add_regularization=True, device=self.device)
-          emb_regularization = model.train()
-          self.adata_output.obsm['emb_reg'] = emb_regularization
-          
-       else:
-          model = Train(self.adata.copy())
-          emb = model.train()
-          self.adata_output.obsm['emb'] = emb
-          
-       return self.adata_output   
-    
-class Train():
+class GraphST():
     def __init__(self, 
-            adata,
-            adata_sc = None,
-            device='cuda:0',
-            learning_rate=0.001,
-            learning_rate_sc = 0.01,
-            weight_decay=0.00,
-            epochs=600, 
-            dim_input=3000,
-            dim_output=64,
-            random_seed = 50,
-            alpha = 10,
-            beta = 1,
-            theta = 0.1,
-            lamda1 = 10,
-            lamda2 = 1,
-            add_regularization = False,
-            deconvolution = False,
-            datatype = '10X'
-            ):
+        adata,
+        adata_sc = None,
+        device='cuda:0',
+        learning_rate=0.001,
+        learning_rate_sc = 0.01,
+        weight_decay=0.00,
+        epochs=600, 
+        dim_input=3000,
+        dim_output=64,
+        random_seed = 41,
+        alpha = 10,
+        beta = 1,
+        theta = 0.1,
+        lamda1 = 10,
+        lamda2 = 1,
+        deconvolution = False,
+        datatype = '10X'
+        ):
         '''\
 
         Parameters
@@ -93,24 +54,19 @@ class Train():
         dim_output : int, optional
             Dimension of output representation. The default is 64.
         random_seed : int, optional
-            Random seed to fix model initialization. The default is 50.
+            Random seed to fix model initialization. The default is 41.
         alpha : float, optional
             Weight factor to control the influence of reconstruction loss in representation learning. 
             The default is 10.
         beta : float, optional
             Weight factor to control the influence of contrastive loss in representation learning. 
             The default is 1.
-        theta : float, optional
-            Weight factor to control the influence of penalty term in representation learning. 
-            The default is 0.1.
         lamda1 : float, optional
             Weight factor to control the influence of reconstruction loss in mapping matrix learning. 
             The default is 10.
         lamda2 : float, optional
             Weight factor to control the influence of contrastive loss in mapping matrix learning. 
             The default is 1.
-        add_regularization : bool, optional
-            Add penalty term in representation learning?. The default is False.
         deconvolution : bool, optional
             Deconvolution task? The default is False.
         datatype : string, optional    
@@ -126,20 +82,37 @@ class Train():
         self.learning_rate_sc = learning_rate_sc
         self.weight_decay=weight_decay
         self.epochs=epochs
+        self.random_seed = random_seed
         self.alpha = alpha
         self.beta = beta
         self.theta = theta
         self.lamda1 = lamda1
         self.lamda2 = lamda2
-        self.add_regularization = add_regularization
         self.deconvolution = deconvolution
         self.datatype = datatype
         
-        self.features = torch.FloatTensor(adata.obsm['feat'].copy()).to(self.device)
-        self.features_a = torch.FloatTensor(adata.obsm['feat_a'].copy()).to(self.device)
-        self.label_CSL = torch.FloatTensor(adata.obsm['label_CSL']).to(self.device)
-        self.adj = adata.obsm['adj']
-        self.graph_neigh = torch.FloatTensor(adata.obsm['graph_neigh'].copy() + np.eye(self.adj.shape[0])).to(self.device)
+        fix_seed(self.random_seed)
+        
+        if 'highly_variable' not in adata.var.keys():
+           preprocess(self.adata)
+        
+        if 'adj' not in adata.obsm.keys():
+           if self.datatype in ['Stereo', 'Slide']:
+              construct_interaction_KNN(self.adata)
+           else:    
+              construct_interaction(self.adata)
+         
+        if 'label_CSL' not in adata.obsm.keys():    
+           add_contrastive_label(self.adata)
+           
+        if 'feat' not in adata.obsm.keys():
+           get_feature(self.adata)
+        
+        self.features = torch.FloatTensor(self.adata.obsm['feat'].copy()).to(self.device)
+        self.features_a = torch.FloatTensor(self.adata.obsm['feat_a'].copy()).to(self.device)
+        self.label_CSL = torch.FloatTensor(self.adata.obsm['label_CSL']).to(self.device)
+        self.adj = self.adata.obsm['adj']
+        self.graph_neigh = torch.FloatTensor(self.adata.obsm['graph_neigh'].copy() + np.eye(self.adj.shape[0])).to(self.device)
     
         self.dim_input = self.features.shape[1]
         self.dim_output = dim_output
@@ -188,8 +161,7 @@ class Train():
         self.optimizer = torch.optim.Adam(self.model.parameters(), self.learning_rate, 
                                           weight_decay=self.weight_decay)
         
-        if not self.add_regularization:
-           print('Begin to train ST data...')
+        print('Begin to train ST data...')
         self.model.train()
         
         for epoch in tqdm(range(self.epochs)): 
@@ -202,34 +174,29 @@ class Train():
             self.loss_sl_2 = self.loss_CSL(ret_a, self.label_CSL)
             self.loss_feat = F.mse_loss(self.features, self.emb)
             
-            if self.add_regularization:
-               self.loss_norm = 0
-               for name, parameters in self.model.named_parameters():
-                   if name in ['weight1', 'weight2']:
-                      self.loss_norm = self.loss_norm + torch.norm(parameters, p=2) 
-               loss =  self.alpha*self.loss_feat + self.beta*(self.loss_sl_1 + self.loss_sl_2) + self.theta*self.loss_norm 
-            else: 
-               loss =  self.alpha*self.loss_feat + self.beta*(self.loss_sl_1 + self.loss_sl_2)
+            loss =  self.alpha*self.loss_feat + self.beta*(self.loss_sl_1 + self.loss_sl_2)
             
             self.optimizer.zero_grad()
             loss.backward() 
             self.optimizer.step()
         
-        if not self.add_regularization:
-           print("Optimization finished for ST data!")
+        print("Optimization finished for ST data!")
         
         with torch.no_grad():
              self.model.eval()
              if self.deconvolution:
                 self.emb_rec = self.model(self.features, self.features_a, self.adj)[1]
+                
+                return self.emb_rec
              else:  
                 if self.datatype in ['Stereo', 'Slide']:
                    self.emb_rec = self.model(self.features, self.features_a, self.adj)[1]
                    self.emb_rec = F.normalize(self.emb_rec, p=2, dim=1).detach().cpu().numpy() 
                 else:
                    self.emb_rec = self.model(self.features, self.features_a, self.adj)[1].detach().cpu().numpy()
-             
-             return self.emb_rec
+                self.adata.obsm['emb'] = self.emb_rec
+                
+                return self.adata
          
     def train_sc(self):
         self.model_sc = Encoder_sc(self.dim_input, self.dim_output).to(self.device)
