@@ -15,7 +15,7 @@ class GraphST():
     def __init__(self, 
         adata,
         adata_sc = None,
-        device='cuda:3',
+        device= torch.device('cpu'),
         learning_rate=0.001,
         learning_rate_sc = 0.01,
         weight_decay=0.00,
@@ -40,7 +40,7 @@ class GraphST():
         adata_sc : anndata, optional
             AnnData object of scRNA-seq data. adata_sc is needed for deconvolution. The default is None.
         device : string, optional
-            Using GPU or CPU? The default is 'cuda:0'.
+            Using GPU or CPU? The default is 'cpu'.
         learning_rate : float, optional
             Learning rate for ST representation learning. The default is 0.001.
         learning_rate_sc : float, optional
