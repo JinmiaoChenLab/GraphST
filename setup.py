@@ -25,6 +25,6 @@ setup(
     install_requires = __requires__,
     zip_safe = False,
     include_package_data = True,
-    long_description = __long_description__,
+    long_description = """jkljkljkl""",
     long_description_content_type="text/markdown"
 )
