@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn import metrics
 import scanpy as sc
+import ot
 from sklearn.decomposition import PCA
 
 
@@ -85,10 +86,9 @@ def refine_label(adata, radius=50, key='label'):
     new_type = []
     old_type = adata.obs[key].values
     
-    #read distance
-    if 'distance_matrix' not in adata.obsm.keys():
-        raise ValueError("Distance matrix is not existed!")
-    distance = adata.obsm['distance_matrix'].copy()
+    #calculate distance
+    position = adata.obsm['spatial']
+    distance = ot.dist(position, position, metric='euclidean')
            
     n_cell = distance.shape[0]
     
@@ -234,4 +234,3 @@ def search_res(adata, n_clusters, method='leiden', use_rep='emb', start=0.1, end
     assert label==1, "Resolution is not found. Please try bigger range or smaller step!." 
        
     return res    
-  
