@@ -28,4 +28,4 @@ For the step-by-step tutorial, please refer to:
 [https://deepst-tutorials.readthedocs.io/en/latest/](https://deepst-tutorials.readthedocs.io/en/latest/)
 
 ## Citation
-Long et al. (2023). Spatially informed clustering, integration, and deconvolution of spatial transcriptomics with GraphST. BioRxiv. 
+Long et al. (2023). Spatially informed clustering, integration, and deconvolution of spatial transcriptomics with GraphST. Nature Communications (Accepted). 
