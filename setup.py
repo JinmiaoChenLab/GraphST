@@ -1,7 +1,7 @@
 from setuptools import Command, find_packages, setup
 
 __lib_name__ = "GraphST"
-__lib_version__ = "1.1.6"
+__lib_version__ = "1.1.1"
 __description__ = "Spatially informed clustering, integration, and deconvolution of spatial transcriptomics with GraphST"
 __url__ = "https://github.com/JinmiaoChenLab/GraphST"
 __author__ = "Yahui Long"
